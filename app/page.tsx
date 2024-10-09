@@ -6,7 +6,8 @@
  * Documentation: https://v0.dev/docs#integrating-generated-code-into-your-nextjs-app
  */
 import { Button } from "@/components/ui/button";
-import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useMemo, useState } from "react";
 
 type Product = {
   id: number;
@@ -38,21 +39,31 @@ export default function Page() {
     setCart(cart.filter((p) => p.id !== product.id));
   };
 
-  useEffect(() => {
-    setQuantities(
-      cart.reduce(
-        (acc, product) => ({ ...acc, [product.id]: product.quantity }),
-        {},
-      ),
-    );
-  }, [cart]);
+  const totalPrice = useMemo(
+    () =>
+      cart
+        .reduce(
+          (total, product) =>
+            total + product.price * (quantities[product.id] || 1),
+          0
+        )
+        .toFixed(2),
+    [cart.length, quantities]
+  );
 
-  const totalPrice = cart
-    .reduce(
-      (total, product) => total + product.price * (quantities[product.id] || 1),
-      0,
-    )
-    .toFixed(2);
+  const onAddToCart = useCallback(
+    (data: CartItem) => {
+      const updatedCart = [...cart, data];
+      setCart(updatedCart);
+      setQuantities(
+        updatedCart.reduce(
+          (acc, product) => ({ ...acc, [product.id]: product.quantity }),
+          {}
+        )
+      );
+    },
+    [cart.length]
+  );
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -61,7 +72,7 @@ export default function Page() {
           key={product.id}
           {...product}
           isAddedToCart={cart.findIndex((p) => p.id === product.id) >= 0}
-          onAddToCart={(data) => setCart([...cart, data])}
+          onAddToCart={onAddToCart}
         />
       ))}
       {cart.length > 0 && (
@@ -95,7 +106,6 @@ export default function Page() {
             <div className="mt-4 flex items-center justify-between">
               <p className="font-semibold">Total:</p>
               <p className="text-primary font-bold">${totalPrice}</p>{" "}
-              {/* Bad practice: expensive calculation in render */}
             </div>
             <Button size="sm" className="w-full mt-4">
               Checkout
@@ -118,16 +128,15 @@ type CardProps = {
 const Card = (props: CardProps) => {
   const [quantity, setQuantity] = useState(1);
 
-  // Bad practice: Logic repeated in event handlers
   const handleAddToCart = () => {
     props.onAddToCart({ ...props, quantity });
   };
 
   return (
     <div className="bg-background rounded-lg shadow-lg overflow-hidden">
-      <img
+      <Image
         src="/placeholder.svg"
-        alt="Product 1"
+        alt="product-placeholder"
         width={400}
         height={300}
         className="w-full h-60 object-cover"
@@ -159,7 +168,7 @@ const Card = (props: CardProps) => {
           <Button
             size="sm"
             disabled={props.isAddedToCart}
-            onClick={handleAddToCart} // Repeated logic
+            onClick={handleAddToCart}
           >
             Add to Cart
           </Button>
